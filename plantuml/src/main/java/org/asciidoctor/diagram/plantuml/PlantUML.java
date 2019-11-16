@@ -86,6 +86,8 @@ public class PlantUML implements DiagramGenerator
             option.initConfig(plantUmlConfig);
         }
         option.setFileFormatOption(fileFormat);
+        option.setFailfast(true);
+        option.setFailfast2(true);
 
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
