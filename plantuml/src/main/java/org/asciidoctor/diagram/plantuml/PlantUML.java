@@ -1,15 +1,20 @@
 package org.asciidoctor.diagram.plantuml;
 
 import net.sourceforge.plantuml.*;
+import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.cucadiagram.dot.GraphvizUtils;
+import net.sourceforge.plantuml.error.PSystemError;
 import net.sourceforge.plantuml.preproc.Defines;
 import org.asciidoctor.diagram.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.StringReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Iterator;
+import java.util.List;
 
 public class PlantUML implements DiagramGenerator
 {
@@ -100,11 +105,34 @@ public class PlantUML implements DiagramGenerator
                 throw new IOException(e);
             }
 
-            new SourceStringReader(
+            BlockUmlBuilder builder = new BlockUmlBuilder(
+                    option.getConfig(),
+                    "UTF-8",
                     Defines.createEmpty(),
-                    request.asString(),
-                    option.getConfig()
-            ).outputImage(byteArrayOutputStream, option.getFileFormatOption());
+                    new StringReader(request.asString()),
+                    FileSystem.getInstance().getCurrentDir(),
+                    "string"
+            );
+
+            List<BlockUml> blocks = builder.getBlockUmls();
+
+            if (blocks.size() == 0) {
+                throw new IOException("No @startuml found");
+            } else {
+                int nbInSystem;
+                int numImage = 0;
+                for (BlockUml block : blocks) {
+                    Diagram system = block.getDiagram();
+                    if (system instanceof PSystemError) {
+                        throw new IOException(((PSystemError) system).getWarningOrError());
+                    }
+                    nbInSystem = system.getNbImages();
+                    if (numImage < nbInSystem) {
+                        system.exportDiagram(byteArrayOutputStream, numImage, fileFormat);
+                    };
+                    numImage -= nbInSystem;
+                }
+            }
         }
 
         return new ResponseData(
